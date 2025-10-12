@@ -38,7 +38,17 @@ productSchema.virtual("discountedPrice").get(function () {
   }
   return this.price;
 });
+productSchema.index(
+  { name: "text", description: "text", brand: "text" },
+  { weights: { name: 5, brand: 3, description: 1 } }
+);
 
-
+productSchema.index({ price: 1 });
+productSchema.index({ categories: 1 });
+productSchema.index({ brand: 1 });
+productSchema.index({ "variants.size": 1 });
+productSchema.index({ "variants.color": 1 });
+productSchema.index({ averageRating: -1 });
+productSchema.index({ discountPercent: -1 });
 
 export default mongoose.model("Product", productSchema);

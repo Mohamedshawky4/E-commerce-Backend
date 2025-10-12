@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import morgan from "morgan";
 import userRoutes from "./routes/userRoutes.js";
+import productRoutes from './routes/productRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -28,7 +29,7 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
 });
 
 app.use("/api/users", userRoutes);
-
+app.use("/api/products", productRoutes);
 
 
 app.listen(process.env.PORT || 5000, () => {
