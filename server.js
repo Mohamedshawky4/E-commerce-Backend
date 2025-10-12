@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
 import morgan from "morgan";
-
+import userRoutes from "./routes/userRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -17,14 +17,18 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
+mongoose.connect(process.env.MONGODB_URI).then(() => {
     console.log("MongoDB connected");
 }).catch((error) => {
     console.error("MongoDB connection error:", error);
+}).finally(() => {
+    app.listen(process.env.PORT || 5000, () => {
+        console.log(`Server running on port ${process.env.PORT || 5000}`);
+    });
 });
+
+app.use("/api/users", userRoutes);
+
 
 
 app.listen(process.env.PORT || 5000, () => {
