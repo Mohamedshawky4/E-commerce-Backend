@@ -45,7 +45,6 @@ const orderSchema = new mongoose.Schema(
     itemsSubtotal: { type: Number, required: true, min: 0 },
     discountTotal: { type: Number, required: true, min: 0, default: 0 },
     shippingFee: { type: Number, required: true, min: 0, default: 0 },
-    taxTotal: { type: Number, required: true, min: 0, default: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
 
     // Order status

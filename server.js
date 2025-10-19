@@ -7,6 +7,7 @@ import morgan from "morgan";
 import userRoutes from "./routes/userRoutes.js";
 import productRoutes from './routes/productRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -32,6 +33,7 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 
 app.listen(process.env.PORT || 5000, () => {

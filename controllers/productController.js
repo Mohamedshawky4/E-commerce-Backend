@@ -7,7 +7,7 @@
     // Should return: products array + pagination metadata (total, page, pages, limit).
     import Product from "../models/Product.js";
     import Category from "../models/Category.js";
-import mongoose from "mongoose";
+    import mongoose from "mongoose";
     export const getProducts = async (req, res) => {
     try {
         let {
