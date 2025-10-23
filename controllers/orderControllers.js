@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
-import { generateInvoice } from "../utils/generateInvoice.js";
+import { generateInvoice } from "../helpers/generateInvoice.js";
 
 // --------------------------------------------------
 // 1️⃣  Order Preview (NO DB WRITE)
