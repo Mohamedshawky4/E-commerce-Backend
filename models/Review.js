@@ -10,6 +10,9 @@ const reviewSchema = new mongoose.Schema({
   // Optional extras
   images: [{ type: String }], // user-uploaded review photos
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // helpful votes
+  status: { type: String, enum: ["approved", "pending", "hidden"], default: "approved" },
+reports: [{ user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, reason: String, reportedAt: Date }],
+
 
 }, { timestamps: true });
 
