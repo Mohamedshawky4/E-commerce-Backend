@@ -14,6 +14,6 @@ const wishlistSchema = new mongoose.Schema({
 
 // Prevent duplicate products via unique compound index at the application layer
 // Model-level: rely on $addToSet in controllers; optional validator here if needed
-wishlistSchema.index({ user: 1 });
+// wishlistSchema.index({ user: 1 });
 
 export default mongoose.model("Wishlist", wishlistSchema);

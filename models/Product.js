@@ -20,7 +20,7 @@ const productSchema = new mongoose.Schema({
   // ✅ percentage-based discount for flexibility
   discountPercent: { type: Number, min: 0, max: 100, default: 0 },
 
-  categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category", index: true }],
+  categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
 
   stock: { type: Number, default: 0, min: 0 },
   variants: [variantSchema],
