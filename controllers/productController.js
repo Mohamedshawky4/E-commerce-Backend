@@ -102,6 +102,8 @@
         .limit(limit);
 
         // 🎯 Field selection
+        // iwant to add categories population here
+         query = query.populate("categories", "name slug");
         if (fields) {
         const selectFields = fields.split(",").join(" ");
         query = query.select(selectFields);
