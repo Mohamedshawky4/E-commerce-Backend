@@ -26,13 +26,13 @@ app.get("/", (req, res) => {
 });
 
 mongoose.connect(process.env.MONGODB_URI).then(() => {
-    console.log("MongoDB connected");
+  console.log("MongoDB connected");
 }).catch((error) => {
-    console.error("MongoDB connection error:", error);
+  console.error("MongoDB connection error:", error);
 }).finally(() => {
-    app.listen(process.env.PORT || 5000, () => {
-        console.log(`Server running on port ${process.env.PORT || 5000}`);
-    });
+  app.listen(process.env.PORT || 5000, () => {
+    console.log(`Server running on port ${process.env.PORT || 5000}`);
+  });
 });
 
 app.use("/api/users", userRoutes);
@@ -44,8 +44,3 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/shipments", shipmentRoutes);
-
-
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT || 5000}`);
-});

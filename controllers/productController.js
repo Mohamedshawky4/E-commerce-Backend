@@ -1,141 +1,160 @@
-    // GET /api/products — getProducts
+// GET /api/products — getProducts
 
-    // Purpose: list products with pagination, sorting, filtering, search.
+// Purpose: list products with pagination, sorting, filtering, search.
 
-    // Query params to support: page, limit, sort (e.g. -price), search, category, minPrice, maxPrice, brand, discounted=true, rating>=, hasStock=true, variant=size,color, tags, fields (select).
+// Query params to support: page, limit, sort (e.g. -price), search, category, minPrice, maxPrice, brand, discounted=true, rating>=, hasStock=true, variant=size,color, tags, fields (select).
 
-    // Should return: products array + pagination metadata (total, page, pages, limit).
-    import Product from "../models/Product.js";
-    import Category from "../models/Category.js";
-    import mongoose from "mongoose";
-    export const getProducts = async (req, res) => {
-    try {
-        let {
-        page = 1,
-        limit = 10,
-        sort,
-        search,
-        category,
-        minPrice,
-        maxPrice,
-        brand,
-        discounted,
-        rating,
-        hasStock,
-        size,
-        color,
-        fields
-        } = req.query;
-        minPrice = Number(minPrice);
-        maxPrice = Number(maxPrice);
-        rating = Number(rating);
+// Should return: products array + pagination metadata (total, page, pages, limit).
+import Product from "../models/Product.js";
+import Category from "../models/Category.js";
+import mongoose from "mongoose";
+export const getProducts = async (req, res) => {
+  try {
+    let {
+      page = 1,
+      limit = 10,
+      sort,
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      brand,
+      discounted,
+      rating,
+      hasStock,
+      size,
+      color,
+      fields
+    } = req.query;
+    minPrice = Number(minPrice);
+    maxPrice = Number(maxPrice);
+    rating = Number(rating);
 
-        page = parseInt(page);
-        limit = parseInt(limit);
-        const filter = {};
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const filter = {};
 
-        // 🔍 Full-text search
-        if (search) {
-    try {
+    // 🔍 Full-text search
+    if (search) {
+      try {
         filter.$text = { $search: search };
-    } catch {
+      } catch {
         filter.name = { $regex: search, $options: "i" }; // fallback search
-    }
+      }
     }
 
-        // 🏷️ Category filter
+    // 🏷️ Category filter - accepts both IDs and slugs
+    // 🏷️ Category filter - supports multiple IDs or slugs
     if (category) {
-    const slugs = category.split(",");
-    const categoryDocs = await Category.find({ slug: { $in: slugs } });
-    if (categoryDocs.length) {
-        filter.categories = { $in: categoryDocs.map(c => c._id) };
+      const categoryValues = category.split(",").map(c => c.trim());
+
+      const ids = [];
+      const slugs = [];
+
+      // Separate IDs and slugs
+      categoryValues.forEach(c => {
+        if (mongoose.Types.ObjectId.isValid(c)) ids.push(c);
+        else slugs.push(c);
+      });
+
+      let categoryObjectIds = [...ids];
+
+      // If slugs exist, fetch them
+      if (slugs.length > 0) {
+        const categoryDocs = await Category.find({ slug: { $in: slugs } }).select("_id");
+        categoryObjectIds.push(...categoryDocs.map(c => c._id));
+      }
+
+      if (categoryObjectIds.length > 0) {
+        filter.categories = { $in: categoryObjectIds };
+      }
     }
+
+    // 💰 Price range
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
-        // 💰 Price range
-        if (minPrice || maxPrice) {
-        filter.price = {};
-        if (minPrice) filter.price.$gte = Number(minPrice);
-        if (maxPrice) filter.price.$lte = Number(maxPrice);
-        }
 
-        // 🏢 Brand filter with multi-value support
-        if (brand) {
-        const brands = brand.split(",").map(b => b.trim());
-        filter.brand = { $in: brands };
-        }
-    
+    // 🏢 Brand filter with multi-value support
+    if (brand) {
+      const brands = brand.split(",").map(b => b.trim());
+      filter.brand = { $in: brands };
+    }
 
-        // 💸 Discount filter
-        if (discounted === "true") filter.discountPercent = { $gt: 0 };
 
-        // ⭐ Rating filter
-        if (rating) filter.averageRating = { $gte: Number(rating) };
+    // 💸 Discount filter
+    if (discounted === "true") filter.discountPercent = { $gt: 0 };
 
-        // 📦 Stock filter
-        if (hasStock === "true") filter.stock = { $gt: 0 };
+    // ⭐ Rating filter
+    if (rating) filter.averageRating = { $gte: Number(rating) };
 
-        // 👕 Variant filter with multi-value support
+    // 📦 Stock filter
+    if (hasStock === "true") filter.stock = { $gt: 0 };
+
+    // 👕 Variant filter with multi-value support
     // 👕 Variant filter (matches same variant element)
     if (size || color) {
-    const variantFilter = {};
+      const variantFilter = {};
 
-    if (size) {
+      if (size) {
         const sizes = size.split(",").map(s => s.trim());
         variantFilter.size = { $in: sizes };
-    }
+      }
 
-    if (color) {
+      if (color) {
         const colors = color.split(",").map(c => c.trim());
         variantFilter.color = { $in: colors };
-    }
+      }
 
-    // ✅ Use $elemMatch to require both in the same variant
-    filter.variants = { $elemMatch: variantFilter };
+      // ✅ Use $elemMatch to require both in the same variant
+      filter.variants = { $elemMatch: variantFilter };
     }
 
     // require at least one variant element that matches both constraints
 
-        // Query builder
-        let query = Product.find(filter)
-        .sort(sort || "-createdAt")
-        .skip((page - 1) * limit)
-        .limit(limit);
+    // Query builder
+    let query = Product.find(filter)
+      .sort(sort || "-createdAt")
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-        // 🎯 Field selection
-        // iwant to add categories population here
-         query = query.populate("categories", "name slug");
-        if (fields) {
-        const selectFields = fields.split(",").join(" ");
-        query = query.select(selectFields);
-        } else {
-        query = query.select("name price discountPercent images averageRating slug");
-        }
-
-        const [products, total] = await Promise.all([
-        query.exec(),
-        Product.countDocuments(filter)
-        ]);
-
-        const pages = Math.ceil(total / limit);
-
-        res.json({
-        success: true,
-        products,
-        pagination: {
-            total,
-            page,
-            pages,
-            limit,
-            hasNextPage: page < pages,
-            hasPrevPage: page > 1
-        }
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    // 🎯 Field selection
+    // iwant to add categories population here
+    query = query.populate("categories", "name slug");
+    if (fields) {
+      const selectFields = fields.split(",").join(" ");
+      query = query.select(selectFields);
+    } else {
+      query = query.select("name price discountPercent images averageRating slug");
     }
-    };
- // GET /api/products/slug/:slug — getProductBySlug
-   export const getProductByIdOrSlug = async (req, res) => {
+
+    const [products, total] = await Promise.all([
+      query.exec(),
+      Product.countDocuments(filter)
+    ]);
+
+    const pages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      products,
+      pagination: {
+        total,
+        page,
+        pages,
+        limit,
+        hasNextPage: page < pages,
+        hasPrevPage: page > 1
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+// GET /api/products/slug/:slug — getProductBySlug
+export const getProductByIdOrSlug = async (req, res) => {
   try {
     const { idOrSlug } = req.params;
 
@@ -157,7 +176,7 @@
     res.status(500).json({ success: false, message: error.message });
   }
 };
-    //get products based on category id with all the filters and pagination in get products
+//get products based on category id with all the filters and pagination in get products
 export const getProductsByCategoryIdOrSlug = async (req, res) => {
   try {
     const { categoryIdOrSlug } = req.params;
@@ -323,10 +342,10 @@ export const getRelatedProducts = async (req, res) => {
       .populate("categories", "name slug")
       .select("name slug price discountPercent images brand averageRating");
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       count: relatedProducts.length,
-      relatedProducts 
+      relatedProducts
     });
 
   } catch (error) {
@@ -346,15 +365,15 @@ export const createProduct = async (req, res) => {
     }
 
     const newProduct = new Product({
-        name,
-        description,
-        price,
-        discountPercent,
-        brand,
-        categories,
-        variants,
-        images,
-        stock,
+      name,
+      description,
+      price,
+      discountPercent,
+      brand,
+      categories,
+      variants,
+      images,
+      stock,
     });
 
     await newProduct.save();
@@ -410,44 +429,44 @@ export const deleteProduct = async (req, res) => {
 
     res.json({ success: true, message: "Product deleted successfully" });
   } catch (error) {
-    res.status(500).json({ success: x, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 //add product variant check if product exists
 export const addProductVariant = async (req, res) => {
-    try {
-        const { idOrSlug } = req.params;
-        const { size, color, additionalPrice, stock, sku } = req.body;
-        let product;
+  try {
+    const { idOrSlug } = req.params;
+    const { size, color, additionalPrice, stock, sku } = req.body;
+    let product;
 
-        // 🧠 Determine if the param is an ObjectId or slug
-        if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
-            product = await Product.findById(idOrSlug);
-        }
-        else {
-            product = await Product.findOne({ slug: idOrSlug });
-        }
-
-        if (!product) {
-            return res.status(404).json({ success: false, message: "Product not found" });
-        }
-
-        const newVariant = {
-            size,
-            color,
-            additionalPrice,
-            stock,
-            sku
-        };
-
-        product.variants.push(newVariant);
-        await product.save();
-
-        res.status(201).json({ success: true, message: "Product variant added successfully", product });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    // 🧠 Determine if the param is an ObjectId or slug
+    if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
+      product = await Product.findById(idOrSlug);
     }
+    else {
+      product = await Product.findOne({ slug: idOrSlug });
+    }
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    const newVariant = {
+      size,
+      color,
+      additionalPrice,
+      stock,
+      sku
+    };
+
+    product.variants.push(newVariant);
+    await product.save();
+
+    res.status(201).json({ success: true, message: "Product variant added successfully", product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 //update product variant
@@ -484,3 +503,11 @@ export const deleteProductVariant = async (req, res) => {
   }
 };
 
+export const getAllBrands = async (req, res) => {
+  try {
+    const brands = await Product.find().distinct("brand");
+    res.json({ success: true, brands });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};  
