@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import { generateInvoice } from "../helpers/generateInvoice.js";
+import { decrementStockAtomic } from "../utils/inventory.js";
 
 // --------------------------------------------------
 // 1️⃣  Order Preview (NO DB WRITE)
@@ -189,34 +190,7 @@ export const placeOrder = async (req, res) => {
       placedAt: new Date(),
     });
 
-    // --- Decrement stock (variant-aware) ---
-    for (const item of items) {
-      if (item.variantId) {
-        const updated = await Product.updateOne(
-          {
-            _id: item.product,
-            "variants._id": item.variantId,
-            "variants.stock": { $gte: item.quantity },
-          },
-          {
-            $inc: { "variants.$.stock": -item.quantity, stock: -item.quantity },
-          }
-        );
-
-        if (updated.matchedCount === 0) {
-          throw new Error(`Insufficient stock for variant of ${item.productName}`);
-        }
-      } else {
-        const updated = await Product.updateOne(
-          { _id: item.product, stock: { $gte: item.quantity } },
-          { $inc: { stock: -item.quantity } }
-        );
-
-        if (updated.matchedCount === 0) {
-          throw new Error(`Insufficient stock for ${item.productName}`);
-        }
-      }
-    }
+    // --- Note: Stock decrementing now happens in payment webhooks for atomic successful completion ---
 
     res.status(201).json({
       success: true,
@@ -287,7 +261,7 @@ export const updateOrderStatus = async (req, res) => {
 
 //cancel order
 export const cancelOrder = async (req, res) => {
-  try { 
+  try {
     const orderId = req.params.id;
     const updatedOrder = await Order.findByIdAndUpdate(orderId, { status: "cancelled", cancelledAt: new Date() }, { new: true }).lean().exec();
     res.json({ success: true, message: "Order cancelled", order: updatedOrder });

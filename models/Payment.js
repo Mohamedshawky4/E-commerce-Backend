@@ -8,16 +8,17 @@ const paymentSchema = new mongoose.Schema({
 
   amount: { type: Number, required: true },
 
-  status: { 
-    type: String, 
-    enum: ["pending", "paid", "failed", "refunded"], 
-    default: "pending" 
+  status: {
+    type: String,
+    enum: ["pending", "paid", "failed", "refunded"],
+    default: "pending"
   },
 
   transactionId: { type: String }, // from Paymob API
   currency: { type: String, default: "EGP" },
 
   paidAt: { type: Date },
+  rawWebhookData: { type: Object },
 }, { timestamps: true });
 
 export default mongoose.model("Payment", paymentSchema);

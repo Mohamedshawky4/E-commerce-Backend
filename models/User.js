@@ -11,13 +11,13 @@ export const addressSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    trim: true, 
-    lowercase: true, 
-    index: true 
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true,
+    index: true
   },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
@@ -28,6 +28,9 @@ const userSchema = new mongoose.Schema({
 
   emailVerified: { type: Boolean, default: false },
   lastLogin: { type: Date },
+  refreshToken: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
 }, { timestamps: true });
 
 export default mongoose.model("User", userSchema);

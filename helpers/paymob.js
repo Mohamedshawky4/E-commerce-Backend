@@ -38,19 +38,20 @@ export const createPaymobPayment = async (order) => {
         currency: "EGP",
         order_id: paymobOrderId,
         integration_id: PAYMOB_INTEGRATION_ID,
-        billing_data:{
-                    email: order.user?.email || "test@example.com",
-                    first_name: order.user?.name?.split(" ")[0] || "User",
-                    last_name: order.user?.name?.split(" ")[1] || "Example",
-                    phone_number: order.user?.phone || "01000000000",
-                    apartment: "NA",
-                    floor: "NA",       // ✅ REQUIRED by Paymob
-                    building: "NA",    // ✅ REQUIRED by Paymob
-                    city: order.shippingAddress?.city || "Cairo",
-                    country: "EG",
-                    state: order.shippingAddress?.state || "Cairo",
-                    street: order.shippingAddress?.street || "NA",},
-
+        billing_data: {
+          email: order.user?.email || "test@example.com",
+          first_name: order.user?.name?.split(" ")[0] || "User",
+          last_name: order.user?.name?.split(" ")[1] || "Example",
+          phone_number: order.user?.phone || "01000000000",
+          apartment: "NA",
+          floor: "NA",       // ✅ REQUIRED by Paymob
+          building: "NA",    // ✅ REQUIRED by Paymob
+          city: order.shippingAddress?.city || "Cairo",
+          country: "EG",
+          state: order.shippingAddress?.state || "Cairo",
+          street: order.shippingAddress?.street || "NA",
+        },
+        redirection_url: `${process.env.FRONTEND_URL}/order/success?id=${order._id}`,
       },
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -61,12 +62,12 @@ export const createPaymobPayment = async (order) => {
       transactionId: paymobOrderId,
       iframeUrl: `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentKeyRes.data.token}`,
     };
- } catch (error) {
-  console.error("PAYMOB ERROR DETAILS:", {
-    status: error.response?.status,
-    data: error.response?.data,
-    message: error.message,
-  });
-  throw new Error("Paymob payment creation failed");
-}
+  } catch (error) {
+    console.error("PAYMOB ERROR DETAILS:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    throw new Error("Paymob payment creation failed");
+  }
 };

@@ -1,15 +1,22 @@
 import express from "express";
-import { registerUser , loginUser, getUserProfile,
-     uploadUserAvatar, addUserAddress, updateUserAddress,
+import {
+      registerUser, loginUser, getUserProfile,
+      uploadUserAvatar, addUserAddress, updateUserAddress,
       deleteUserAddress, setDefaultUserAddress, getUserAddresses,
-      updateUserProfile, getAllUsers, deleteUserById, updateUserRoleById, getUserById } from "../controllers/userController.js";
+      updateUserProfile, getAllUsers, deleteUserById, updateUserRoleById, getUserById,
+      refreshToken, forgotPassword, resetPassword
+} from "../controllers/userController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { admin } from "../middleware/adminMiddleware.js";
 const userRoutes = express.Router();
 
 userRoutes.post("/register", registerUser);
 userRoutes.post("/login", loginUser);
-userRoutes.get("/profile",protect, getUserProfile);
+userRoutes.post("/refresh-token", refreshToken);
+userRoutes.post("/forgotpassword", forgotPassword);
+userRoutes.put("/resetpassword/:resettoken", resetPassword);
+
+userRoutes.get("/profile", protect, getUserProfile);
 userRoutes.put("/profile", protect, updateUserProfile);
 userRoutes.post("/upload-avatar", protect, uploadUserAvatar);
 userRoutes.post("/address", protect, addUserAddress);

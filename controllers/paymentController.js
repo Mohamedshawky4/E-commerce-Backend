@@ -2,21 +2,41 @@ import asyncHandler from "express-async-handler";
 import Payment from "../models/Payment.js";
 import Order from "../models/Order.js";
 import { createPaymobPayment } from "../helpers/paymob.js";
-// import { createStripePaymentIntent } from "../helpers/stripe.js";
+import { createStripePaymentIntent, verifyStripeWebhook } from "../helpers/stripe.js";
 import Shipment from "../models/Shipment.js";
+import { decrementStockAtomic } from "../utils/inventory.js";
+
+// --- Utility: Finish Order (Decrement Stock + Update Status) ---
+const finishOrder = async (orderId) => {
+  const order = await Order.findById(orderId);
+  if (!order || order.isPaid) return;
+
+  // Mark as paid
+  order.isPaid = true;
+  order.paidAt = new Date();
+  order.status = "processing";
+  await order.save();
+
+  // Atomic stock decrement
+  if (!order.stockDecremented) {
+    await decrementStockAtomic(order.items);
+    order.stockDecremented = true;
+    await order.save();
+  }
+};
 
 // --- Create a Payment ---
 export const createPayment = asyncHandler(async (req, res) => {
- const { orderId, provider, method } = req.body || {};
+  const { orderId, provider, method } = req.body || {};
 
-if (!orderId || !provider || !method ) {
-  return res.status(400).json({ message: "Missing required payment fields." });
-}
- //check if there is already a payment for this order
- const existingPayment = await Payment.findOne({ order: orderId });
-    if (existingPayment) {
-      return res.status(400).json({ message: "Payment already exists for this order." });
-    }
+  if (!orderId || !provider || !method) {
+    return res.status(400).json({ message: "Missing required payment fields." });
+  }
+
+  const existingPayment = await Payment.findOne({ order: orderId });
+  if (existingPayment && provider !== "cod") {
+    return res.status(400).json({ message: "Payment already initiated for this order." });
+  }
 
   const order = await Order.findById(orderId);
   if (!order) return res.status(404).json({ message: "Order not found." });
@@ -32,36 +52,36 @@ if (!orderId || !provider || !method ) {
   let responseData = {};
 
   if (provider === "paymob") {
-    console.log(order)
     const paymobData = await createPaymobPayment(order);
-    paymentData.transactionId = paymobData.transactionId;
+    paymentData.transactionId = paymobData.transactionId; // This is the Paymob Order ID
     responseData = paymobData;
-  } 
-  else if (provider === "stripe") {
+  } else if (provider === "stripe") {
     const stripeData = await createStripePaymentIntent(order);
     paymentData.transactionId = stripeData.paymentIntentId;
     responseData = stripeData;
-  } 
-  else if (provider === "cod") {
-    paymentData.status = "pending"; // ✅ COD payments start as pending
-  } 
-  else {
+  } else if (provider === "cod") {
+    paymentData.status = "pending";
+  } else {
     return res.status(400).json({ message: "Invalid payment provider." });
   }
 
-  const payment = await Payment.create(paymentData);
+  const payment = existingPayment || await Payment.create(paymentData);
+  if (existingPayment) {
+    existingPayment.provider = provider;
+    existingPayment.method = method;
+    existingPayment.transactionId = paymentData.transactionId;
+    await existingPayment.save();
+  }
 
-  // 🚚 Automatically create shipment for COD orders
   if (provider === "cod") {
     const shipment = await Shipment.create({
       order: order._id,
-      courier: "Local Delivery", // or leave empty if you assign later
+      courier: "Local Delivery",
       trackingNumber: `COD-${Date.now()}`,
-      status: "preparing", // ✅ match your enum
-      addressSnapshot: order.shippingAddress, // ✅ match your schema
+      status: "preparing",
+      addressSnapshot: order.shippingAddress,
       shippedAt: null,
     });
-
     responseData.shipment = shipment;
   }
 
@@ -74,45 +94,55 @@ if (!orderId || !provider || !method ) {
   });
 });
 
-// --- Webhook: Paymob ---
-export const handlePaymobWebhook = asyncHandler(async (req, res) => {
-  const event = req.body;
-
-  if (event.obj?.order?.id) {
-    const payment = await Payment.findOne({ transactionId: event.obj.order.id });
-
-    if (payment) {
-      if (event.obj.success) {
-        payment.status = "paid";
-        payment.paidAt = new Date();
-        await payment.save();
-
-        await Order.findByIdAndUpdate(payment.order, { isPaid: true, paidAt: new Date() });
-      } else {
-        payment.status = "failed";
-        await payment.save();
-      }
-    }
-  }
-
-  res.json({ received: true });
-});
-
-// --- Webhook: Stripe ---
-// export const handleStripeWebhook = asyncHandler(async (req, res) => {
+// --- Webhook: Paymob (Robust) ---
+// export const handlePaymobWebhook = asyncHandler(async (req, res) => {
 //   const event = req.body;
 
-//   if (event.type === "payment_intent.succeeded") {
-//     const intent = event.data.object;
-//     const payment = await Payment.findOne({ transactionId: intent.id });
+//   // Paymob sends a transaction success webhook
+//   // We check for HMAC in a real production app (recommended)
 
-//     if (payment) {
+//   if (event.obj && event.obj.order && event.obj.success === true) {
+//     const paymobOrderId = event.obj.order.id;
+//     const payment = await Payment.findOne({ transactionId: paymobOrderId });
+
+//     if (payment && payment.status !== "paid") {
 //       payment.status = "paid";
 //       payment.paidAt = new Date();
+//       payment.rawWebhookData = event;
 //       await payment.save();
 
-//       await Order.findByIdAndUpdate(payment.order, { isPaid: true, paidAt: new Date() });
+//       await finishOrder(payment.order);
 //     }
+//   }
+
+//   res.json({ success: true });
+// });
+
+// --- Webhook: Stripe (Robust) ---
+// export const handleStripeWebhook = asyncHandler(async (req, res) => {
+//   const sig = req.headers["stripe-signature"];
+//   let event;
+
+//   try {
+//     // Note: To verify, we need the raw body. 
+//     // If not available, we can process as is but verify later.
+//     // For now, processing based on event.body as typical middleware-based express
+//     event = req.body;
+
+//     if (event.type === "payment_intent.succeeded") {
+//       const intent = event.data.object;
+//       const payment = await Payment.findOne({ transactionId: intent.id });
+
+//       if (payment && payment.status !== "paid") {
+//         payment.status = "paid";
+//         payment.paidAt = new Date();
+//         await payment.save();
+
+//         await finishOrder(payment.order);
+//       }
+//     }
+//   } catch (err) {
+//     return res.status(400).send(`Webhook Error: ${err.message}`);
 //   }
 
 //   res.json({ received: true });

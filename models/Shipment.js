@@ -13,6 +13,8 @@ const shipmentSchema = new mongoose.Schema({
     default: "preparing" 
   },
 
+  // Timestamps for shipment process
+
   shippedAt: { type: Date },
   deliveredAt: { type: Date },
 

@@ -203,7 +203,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ecommerce-backend/dev/1764949074061-2025-12-05T15:37:54.061Z/ecommerce-backend.zip"
+                "S3Key": "serverless/ecommerce-backend/dev/1764956707513-2025-12-05T17:45:07.513Z/ecommerce-backend.zip"
               },
               "Handler": "lambda.handler",
               "Runtime": "nodejs20.x",
@@ -232,14 +232,14 @@
               "ApiLogGroup"
             ]
           },
-          "ApiLambdaVersionXZHYrm8sF9DIPH5DJjNMsUUcNueTeCm1n7TD1Meug": {
+          "ApiLambdaVersionywUtbMC9cRgX2IW4p8NIeqtWCAAKsLQ69xropq2UAU": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ApiLambdaFunction"
               },
-              "CodeSha256": "zY/mNkCshpdXQp3oErtJ0wRM21OIBUEj8zuKzKd0TTM="
+              "CodeSha256": "Z6bwVvbOA9b891yQrQOp5ERzBGUWFz4gioIlTLPPFZo="
             }
           },
           "HttpApi": {
@@ -368,7 +368,7 @@
           "ApiLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ApiLambdaVersionXZHYrm8sF9DIPH5DJjNMsUUcNueTeCm1n7TD1Meug"
+              "Ref": "ApiLambdaVersionywUtbMC9cRgX2IW4p8NIeqtWCAAKsLQ69xropq2UAU"
             },
             "Export": {
               "Name": "sls-ecommerce-backend-dev-ApiLambdaFunctionQualifiedArn"
@@ -542,7 +542,7 @@
         "timeout": 30,
         "runtime": "nodejs20.x",
         "vpc": {},
-        "versionLogicalId": "ApiLambdaVersionXZHYrm8sF9DIPH5DJjNMsUUcNueTeCm1n7TD1Meug"
+        "versionLogicalId": "ApiLambdaVersionywUtbMC9cRgX2IW4p8NIeqtWCAAKsLQ69xropq2UAU"
       }
     },
     "configValidationMode": "warn",
@@ -574,7 +574,7 @@
         ],
         "artifactsS3KeyDirname": "serverless/ecommerce-backend/dev/code-artifacts",
         "artifact": "D:\\projects\\e-commerce\\backend\\.serverless\\ecommerce-backend.zip",
-        "artifactDirectoryName": "serverless/ecommerce-backend/dev/1764949074061-2025-12-05T15:37:54.061Z"
+        "artifactDirectoryName": "serverless/ecommerce-backend/dev/1764956707513-2025-12-05T17:45:07.513Z"
       },
       "custom": {
         "$ref": "$[\"service\"][\"custom\"]"
@@ -585,7 +585,7 @@
     "artifact": "D:\\projects\\e-commerce\\backend\\.serverless\\ecommerce-backend.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/ecommerce-backend/dev/1764949074061-2025-12-05T15:37:54.061Z",
+    "artifactDirectoryName": "serverless/ecommerce-backend/dev/1764956707513-2025-12-05T17:45:07.513Z",
     "artifact": "ecommerce-backend.zip"
   }
 }

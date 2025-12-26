@@ -13,7 +13,7 @@ const orderItemSchema = new mongoose.Schema(
     productName: { type: String, trim: true },
     productBrand: { type: String, trim: true },
 
-  
+
     variantId: { type: mongoose.Schema.Types.ObjectId },
 
     variantSnapshot: {
@@ -63,12 +63,12 @@ const orderSchema = new mongoose.Schema(
 
     // Status timestamps
     placedAt: { type: Date },
+    isPaid: { type: Boolean, default: false },
     paidAt: { type: Date },
+    stockDecremented: { type: Boolean, default: false },
     shippedAt: { type: Date },
     deliveredAt: { type: Date },
     cancelledAt: { type: Date },
-  },
-  { timestamps: true }
-);
+  }, { timestamps: true });
 
 export default mongoose.model("Order", orderSchema);

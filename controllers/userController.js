@@ -1,7 +1,10 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateToken } from "../utils/generateToken.js";
+import crypto from "crypto";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import { passwordResetTemplate } from "../utils/emailTemplates.js";
 
 // REGISTER USER
 export const registerUser = async (req, res) => {
@@ -14,12 +17,18 @@ export const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword });
-    const token = generateToken(user._id);
+
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(201).json({
       success: true,
       message: "User registered successfully",
-      token,
+      token: accessToken,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -45,14 +54,18 @@ export const loginUser = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ success: false, message: "Invalid email or password" });
 
-    const token = generateToken(user._id);
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = refreshToken;
     user.lastLogin = Date.now();
     await user.save();
 
     res.json({
       success: true,
       message: "User logged in successfully",
-      token,
+      token: accessToken,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -297,6 +310,112 @@ export const uploadUserAvatar = async (req, res) => {
         role: updatedUser.role,
         avatar: updatedUser.avatar,
       },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+// @desc    Refresh Token
+// @route   POST /api/users/refresh
+// @access  Public
+export const refreshToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(401).json({ success: false, message: "Refresh token required" });
+
+    const user = await User.findOne({ refreshToken: token });
+    if (!user) return res.status(403).json({ success: false, message: "Invalid refresh token" });
+
+    jwt.verify(token, process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET, (err, decoded) => {
+      if (err || user._id.toString() !== decoded.id) {
+        return res.status(403).json({ success: false, message: "Invalid refresh token" });
+      }
+
+      const accessToken = generateAccessToken(user._id);
+      const newRefreshToken = generateRefreshToken(user._id);
+
+      user.refreshToken = newRefreshToken;
+      user.save().then(() => {
+        res.json({ success: true, token: accessToken, refreshToken: newRefreshToken });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Forgot Password
+// @route   POST /api/users/forgotpassword
+// @access  Public
+export const forgotPassword = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "There is no user with that email" });
+    }
+
+    // Get reset token
+    const resetToken = crypto.randomBytes(20).toString("hex");
+
+    // Hash token and set to resetPasswordToken field
+    user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    // Set expire
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 mins
+
+    await user.save();
+
+    // Create reset url
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Password Reset Request",
+        html: passwordResetTemplate(resetUrl, user.name),
+      });
+
+      res.status(200).json({ success: true, message: "Email sent" });
+    } catch (err) {
+      console.error(err);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+
+      return res.status(500).json({ success: false, message: "Email could not be sent" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset Password
+// @route   PUT /api/users/resetpassword/:resettoken
+// @access  Public
+export const resetPassword = async (req, res) => {
+  try {
+    // Get hashed token
+    const resetPasswordToken = crypto.createHash("sha256").update(req.params.resettoken).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired token" });
+    }
+
+    // Set new password
+    user.password = await bcrypt.hash(req.body.password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
