@@ -5,6 +5,8 @@ import { createPaymobPayment } from "../helpers/paymob.js";
 import { createStripePaymentIntent, verifyStripeWebhook } from "../helpers/stripe.js";
 import Shipment from "../models/Shipment.js";
 import { decrementStockAtomic } from "../utils/inventory.js";
+import { logger } from "../utils/logger.js";
+import { sendOrderConfirmation } from "../utils/email.js";
 
 // --- Utility: Finish Order (Decrement Stock + Update Status) ---
 const finishOrder = async (orderId) => {
@@ -22,6 +24,17 @@ const finishOrder = async (orderId) => {
     await decrementStockAtomic(order.items);
     order.stockDecremented = true;
     await order.save();
+  }
+
+  // Send Confirmation Email
+  try {
+    const user = await Order.findById(orderId).populate("user").lean();
+    if (user && user.user && user.user.email) {
+      await sendOrderConfirmation(user.user.email, order);
+      logger.info(`Confirmation email sent to ${user.user.email} for order ${orderId}`);
+    }
+  } catch (err) {
+    logger.error(`Failed to send confirmation email for order ${orderId}`, err.message);
   }
 };
 
@@ -83,6 +96,19 @@ export const createPayment = asyncHandler(async (req, res) => {
       shippedAt: null,
     });
     responseData.shipment = shipment;
+  }
+
+
+  logger.transaction("PAYMENT_INITIATED", {
+    orderId,
+    provider,
+    method,
+    amount: order.totalAmount,
+    status: payment.status
+  });
+
+  if (provider === "cod") {
+    await finishOrder(order._id);
   }
 
   res.status(201).json({

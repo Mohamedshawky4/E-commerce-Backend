@@ -3,6 +3,7 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import { generateInvoice } from "../helpers/generateInvoice.js";
 import { decrementStockAtomic } from "../utils/inventory.js";
+import { logger } from "../utils/logger.js";
 
 // --------------------------------------------------
 // 1️⃣  Order Preview (NO DB WRITE)
@@ -190,6 +191,13 @@ export const placeOrder = async (req, res) => {
       placedAt: new Date(),
     });
 
+    logger.transaction("ORDER_PLACED", {
+      orderId: newOrder._id,
+      user: userId,
+      amount: totalAmount,
+      method: paymentMethod
+    });
+
     // --- Note: Stock decrementing now happens in payment webhooks for atomic successful completion ---
 
     res.status(201).json({
@@ -198,6 +206,7 @@ export const placeOrder = async (req, res) => {
       order: newOrder,
     });
   } catch (error) {
+    logger.error("Place Order Failed", error.stack);
     console.error("Place Order Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }

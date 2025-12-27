@@ -127,7 +127,7 @@ export const getProducts = async (req, res) => {
       const selectFields = fields.split(",").join(" ");
       query = query.select(selectFields);
     } else {
-      query = query.select("name price discountPercent images averageRating slug");
+      query = query.select("name price discountPercent images averageRating slug stock variants");
     }
 
     const [products, total] = await Promise.all([
@@ -275,7 +275,7 @@ export const getProductsByCategoryIdOrSlug = async (req, res) => {
       const selectFields = fields.split(",").join(" ");
       query = query.select(selectFields);
     } else {
-      query = query.select("name price discountPercent images averageRating slug");
+      query = query.select("name price discountPercent images averageRating slug stock variants");
     }
 
     const [products, total] = await Promise.all([
