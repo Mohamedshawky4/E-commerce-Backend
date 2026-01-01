@@ -42,7 +42,9 @@ export const addToCart = async (req, res) => {
     // 🧮 Optionally recalculate total price
     await cart.save();
 
-    res.json({ success: true, message: "Item added to cart", cart });
+    const populatedCart = await Cart.findById(cart._id).populate("items.product", "name price images slug variants");
+
+    res.json({ success: true, message: "Item added to cart", cart: populatedCart });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -67,7 +69,10 @@ export const updateCartItem = async (req, res) => {
     item.quantity = quantity;
 
     await cart.save();
-    res.json({ success: true, message: "Cart item updated", cart });
+
+    const populatedCart = await Cart.findById(cart._id).populate("items.product", "name price images slug variants");
+
+    res.json({ success: true, message: "Cart item updated", cart: populatedCart });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

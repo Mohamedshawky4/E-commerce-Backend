@@ -510,4 +510,25 @@ export const getAllBrands = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
-};  
+};
+
+// GET /api/products/suggestions?q=...
+export const getSearchSuggestions = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json({ success: true, products: [] });
+
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: q, $options: "i" } },
+        { brand: { $regex: q, $options: "i" } }
+      ]
+    })
+      .limit(5)
+      .select("name slug images price discountPercent brand");
+
+    res.json({ success: true, products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
