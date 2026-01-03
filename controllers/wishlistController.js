@@ -7,7 +7,7 @@ export const getWishlist = async (req, res) => {
   try {
     const userId = req.user._id;
     const wishlist = await Wishlist.findOne({ user: userId })
-      .populate("products", "name price images slug");
+      .populate("products", "name price images slug discountedPrice discountPercent stock variants averageRating");
 
     if (!wishlist) {
       return res.json({ success: true, wishlist: [] });
@@ -41,7 +41,7 @@ export const addToWishlist = async (req, res) => {
       { user: userId },
       { $addToSet: { products: product._id } }, // prevents duplicates
       { new: true, upsert: true }
-    ).populate("products", "name price images slug");
+    ).populate("products", "name price images slug discountedPrice discountPercent stock variants averageRating");
 
     res.json({ success: true, message: "Product added to wishlist", wishlist: wishlist.products });
   } catch (error) {
@@ -71,7 +71,7 @@ export const removeFromWishlist = async (req, res) => {
       { user: userId },
       { $pull: { products: product._id } },
       { new: true }
-    ).populate("products", "name price images slug");
+    ).populate("products", "name price images slug discountedPrice discountPercent stock variants averageRating");
 
     res.json({ success: true, message: "Product removed from wishlist", wishlist: wishlist?.products || [] });
   } catch (error) {
