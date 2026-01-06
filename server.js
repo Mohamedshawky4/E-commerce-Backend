@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 import userRoutes from "./routes/userRoutes.js";
 import productRoutes from './routes/productRoutes.js';
@@ -21,9 +22,11 @@ dotenv.config();
 const app = express();
 
 // 🧴 Security & Logging
+app.use(helmet());
 app.use(express.json());
 app.use(cors());
-app.use(morgan("[:date[iso]] :method :url :status :res[content-length] - :response-time ms"));
+app.use(morgan(":method :url :status :res[content-length] - :response-time ms"));
+
 
 // 🚨 Rate Limiting
 const authLimiter = rateLimit({
