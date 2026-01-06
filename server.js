@@ -15,6 +15,9 @@ import orderRoutes from './routes/orderRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import shipmentRoutes from './routes/shipmentRoutes.js';
+import couponRoutes from './routes/couponRoutes.js';
+import giftCardRoutes from './routes/giftCardRoutes.js';
+
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
 dotenv.config();
@@ -51,6 +54,9 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/shipments", shipmentRoutes);
+app.use("/api/coupons", couponRoutes);
+app.use("/api/gift-cards", giftCardRoutes);
+
 
 // 🛠️ Error Handling
 app.use(notFound);

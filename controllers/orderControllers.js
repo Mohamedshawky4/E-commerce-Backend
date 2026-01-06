@@ -4,6 +4,9 @@ import Product from "../models/Product.js";
 import { generateInvoice } from "../helpers/generateInvoice.js";
 import { decrementStockAtomic } from "../utils/inventory.js";
 import { logger } from "../utils/logger.js";
+import Coupon from "../models/Coupon.js";
+import GiftCard from "../models/GiftCard.js";
+
 
 // --------------------------------------------------
 // 1️⃣  Order Preview (NO DB WRITE)
@@ -108,7 +111,8 @@ export const getOrderPreview = async (req, res) => {
 export const placeOrder = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { cartItems, shippingAddress, paymentMethod } = req.body;
+    const { cartItems, shippingAddress, paymentMethod, couponCode, giftCardCode } = req.body;
+
 
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
@@ -172,10 +176,50 @@ export const placeOrder = async (req, res) => {
       itemsSubtotal += lineTotal;
     }
 
-    const discountTotal = 0;
+    let discountTotal = 0;
+
+    // --- Validate Coupon ---
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+      if (coupon && coupon.expiryDate > new Date() && (coupon.usageLimit === null || coupon.usageCount < coupon.usageLimit)) {
+        if (itemsSubtotal >= coupon.minPurchase) {
+          if (coupon.discountType === "percentage") {
+            discountTotal = (itemsSubtotal * coupon.discountValue) / 100;
+          } else {
+            discountTotal = coupon.discountValue;
+          }
+          // Increment usage count
+          coupon.usageCount += 1;
+          await coupon.save();
+        }
+      }
+    }
+
+    // --- Validate Gift Card ---
+    let giftCardDiscount = 0;
+    if (giftCardCode) {
+      const giftCard = await GiftCard.findOne({ code: giftCardCode.toUpperCase(), isActive: true });
+      if (giftCard && giftCard.currentBalance > 0 && (!giftCard.expiryDate || giftCard.expiryDate > new Date())) {
+        const remainingAfterCoupon = itemsSubtotal - discountTotal;
+        giftCardDiscount = Math.min(giftCard.currentBalance, remainingAfterCoupon);
+
+        // Deduct from gift card
+        giftCard.currentBalance -= giftCardDiscount;
+        giftCard.usedBy.push({
+          user: userId,
+          amount: giftCardDiscount,
+          order: null, // Will update after order creation
+        });
+        await giftCard.save();
+
+        discountTotal += giftCardDiscount;
+      }
+    }
+
     const shippingFee = 50;
-    const totalAmount = itemsSubtotal - discountTotal + shippingFee;
+    const totalAmount = Math.max(0, itemsSubtotal - discountTotal + shippingFee);
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
 
     const newOrder = await Order.create({
       orderNumber,
@@ -190,6 +234,15 @@ export const placeOrder = async (req, res) => {
       status: "pending",
       placedAt: new Date(),
     });
+
+    // Update gift card usage with order ID
+    if (giftCardCode && giftCardDiscount > 0) {
+      await GiftCard.updateOne(
+        { code: giftCardCode.toUpperCase(), "usedBy.order": null, "usedBy.user": userId },
+        { $set: { "usedBy.$.order": newOrder._id } }
+      );
+    }
+
 
     logger.transaction("ORDER_PLACED", {
       orderId: newOrder._id,
