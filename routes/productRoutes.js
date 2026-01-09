@@ -1,4 +1,4 @@
-import { addProductVariant, createProduct, deleteProduct, deleteProductVariant, getAllBrands, getProductByIdOrSlug, getProducts, getProductsByCategoryIdOrSlug, getRelatedProducts, getSearchSuggestions, updateProduct, updateProductVariant } from "../controllers/productController.js";
+import { addProductVariant, createProduct, deleteProduct, deleteProductVariant, getAllBrands, getProductByIdOrSlug, getProducts, getProductsByCategoryIdOrSlug, getRelatedProducts, getSearchSuggestions, getTrendingKeywords, getTrendingProducts, updateProduct, updateProductVariant } from "../controllers/productController.js";
 
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
@@ -9,6 +9,8 @@ const productRoutes = express.Router();
 productRoutes.get("/brands", getAllBrands); // Must be before /:idOrSlug
 
 productRoutes.get("/suggestions", getSearchSuggestions);
+productRoutes.get("/trending", getTrendingProducts);
+productRoutes.get("/trending-keywords", getTrendingKeywords);
 productRoutes.get("/", getProducts);
 productRoutes.post("/", protect, admin, createProduct);
 productRoutes.get("/category/:categoryIdOrSlug", getProductsByCategoryIdOrSlug);

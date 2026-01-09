@@ -279,6 +279,47 @@ export const getAllBrands = asyncHandler(async (req, res) => {
   res.json({ success: true, brands });
 });
 
+// GET /api/products/trending
+export const getTrendingProducts = asyncHandler(async (req, res) => {
+  const products = await Product.find()
+    .sort({ averageRating: -1, reviewCount: -1 })
+    .limit(4)
+    .select("name slug images price discountPercent brand averageRating");
+
+  res.json({ success: true, products });
+});
+
+// GET /api/products/trending-keywords
+export const getTrendingKeywords = asyncHandler(async (req, res) => {
+  // Get top brands and popular product keywords
+  const topBrands = await Product.aggregate([
+    { $group: { _id: "$brand", count: { $sum: 1 }, avgRating: { $avg: "$averageRating" } } },
+    { $sort: { avgRating: -1, count: -1 } },
+    { $limit: 3 }
+  ]);
+
+  // Get popular product name keywords (extract first 2 words from top products)
+  const topProducts = await Product.find()
+    .sort({ averageRating: -1, reviewCount: -1 })
+    .limit(5)
+    .select("name");
+
+  const keywords = new Set();
+
+  // Add top brands
+  topBrands.forEach(b => {
+    if (b._id) keywords.add(b._id);
+  });
+
+  // Extract keywords from product names
+  topProducts.forEach(p => {
+    const words = p.name.split(' ').slice(0, 2).join(' ');
+    if (words.length > 3) keywords.add(words);
+  });
+
+  res.json({ success: true, keywords: Array.from(keywords).slice(0, 5) });
+});
+
 // GET /api/products/suggestions?q=...
 export const getSearchSuggestions = asyncHandler(async (req, res) => {
   const { q } = req.query;
