@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -17,6 +19,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import shipmentRoutes from './routes/shipmentRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import giftCardRoutes from './routes/giftCardRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
@@ -56,6 +59,12 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/shipments", shipmentRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/gift-cards", giftCardRoutes);
+app.use('/api/upload', uploadRoutes);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 
 // 🛠️ Error Handling
