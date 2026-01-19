@@ -1,6 +1,6 @@
 import express from "express";
 import {
-      registerUser, loginUser, getUserProfile,
+      registerUser, loginUser, googleLogin, getUserProfile,
       uploadUserAvatar, addUserAddress, updateUserAddress,
       deleteUserAddress, setDefaultUserAddress, getUserAddresses,
       updateUserProfile, getAllUsers, deleteUserById, updateUserRoleById, getUserById,
@@ -12,6 +12,7 @@ const userRoutes = express.Router();
 
 userRoutes.post("/register", registerUser);
 userRoutes.post("/login", loginUser);
+userRoutes.post("/google-login", googleLogin);
 userRoutes.post("/refresh-token", refreshToken);
 userRoutes.post("/forgotpassword", forgotPassword);
 userRoutes.put("/resetpassword/:resettoken", resetPassword);

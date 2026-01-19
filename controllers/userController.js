@@ -5,6 +5,9 @@ import crypto from "crypto";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { passwordResetTemplate } from "../utils/emailTemplates.js";
+import { OAuth2Client } from "google-auth-library";
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // REGISTER USER
 export const registerUser = async (req, res) => {
@@ -76,6 +79,79 @@ export const loginUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GOOGLE LOGIN
+export const googleLogin = async (req, res) => {
+  try {
+    const { idToken, accessToken } = req.body;
+    let name, email, picture, googleId;
+
+    if (idToken) {
+      const ticket = await client.verifyIdToken({
+        idToken: idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      name = payload.name;
+      email = payload.email;
+      picture = payload.picture;
+      googleId = payload.sub;
+    } else if (accessToken) {
+      // Fetch user info using access token
+      const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
+      const data = await response.json();
+      name = data.name;
+      email = data.email;
+      picture = data.picture;
+      googleId = data.sub;
+
+      if (!email) {
+        return res.status(400).json({ success: false, message: "Could not retrieve email from Google" });
+      }
+    } else {
+      return res.status(400).json({ success: false, message: "No token provided" });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString("hex");
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        avatar: picture,
+        googleId,
+      });
+    }
+
+    const newAccessToken = generateAccessToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = newRefreshToken;
+    user.lastLogin = Date.now();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Google login successful",
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
+      },
+    });
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.status(401).json({ success: false, message: "Invalid Google token" });
   }
 };
 
