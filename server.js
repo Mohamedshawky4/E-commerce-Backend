@@ -21,6 +21,7 @@ import couponRoutes from './routes/couponRoutes.js';
 import giftCardRoutes from './routes/giftCardRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import subscriberRoutes from './routes/subscriberRoutes.js';
+import reviewUploadRoutes from './routes/reviewUploadRoutes.js';
 
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
@@ -61,6 +62,7 @@ app.use("/api/shipments", shipmentRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/gift-cards", giftCardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/upload-review', reviewUploadRoutes);
 app.use("/api/subscribers", subscriberRoutes);
 
 const __filename = fileURLToPath(import.meta.url);

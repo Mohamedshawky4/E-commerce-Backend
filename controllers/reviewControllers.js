@@ -32,7 +32,7 @@ const updateProductRating = async (productId) => {
 // --------------------------------------------------
 // 🟢 1️⃣ Add Review (Supports productId or slug)
 export const addReview = asyncHandler(async (req, res) => {
-  const { productId, slug, rating, comment, images } = req.body;
+  const { productId, slug, rating, comment, images, videos } = req.body;
 
   // 1️⃣ Find product by ID or slug
   const product =
@@ -74,7 +74,9 @@ export const addReview = asyncHandler(async (req, res) => {
     product: product._id,
     rating,
     comment,
-    images,
+    images: images || [],
+    videos: videos || [],
+    isVerifiedPurchase: !!hasOrdered,
   });
 
   await updateProductRating(product._id);
@@ -239,13 +241,13 @@ export const getAllReviews = asyncHandler(async (req, res) => {
 export const reportReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
-//check if review exists
-    const review = await Review.findById(id);
-    if (!review) {
-        return res.status(404).json({ success: false, message: "Review not found." });
-    }
-    review.reports.push({ user: req.user._id, reason, reportedAt: new Date() });
-    await review.save();
+  //check if review exists
+  const review = await Review.findById(id);
+  if (!review) {
+    return res.status(404).json({ success: false, message: "Review not found." });
+  }
+  review.reports.push({ user: req.user._id, reason, reportedAt: new Date() });
+  await review.save();
 
   res.json({ success: true, message: "Review reported." });
 });
